@@ -1,29 +1,41 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {api} from '../../constants/api';
 
 export default function SignIn({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const url = api;
 
-  const url = "https://demo-v1-env.eu-west-3.elasticbeanstalk.com";
-  const handleSubmit = async (data) => {
-
-
-  const requestUrl = `${url}/api/auth/signin?email=${email}&password=${password}`;
-
-  await axios.post(requestUrl, {
-  }).then(response => {
-    console.log("Fetch operation was successful" , response);
-    console.log(response.data.data.userResponse.name);
-    navigation.navigate('Home', {userData: response.data.data.userResponse});
-  })
-  .catch(error => {
-    console.error('There was a problem with the fetch operation:', error);
-  });
-     
-};
+  const handleSubmit = async () => {
+    console.log("email: ", email);
+    console.log("password ", password);
+    const requestUrl = `${url}/api/auth/login`;
+    console.log("requestUrl: ", requestUrl);
+  
+    await axios.post(requestUrl, {
+      email: email,
+      password: password
+    }).then(async response => {
+      console.log("Fetch operation was successful");
+  
+      // Storing data in AsyncStorage
+      await AsyncStorage.setItem('token', response.data.token|| '');
+      await AsyncStorage.setItem('name', response.data.user.name)|| '';
+      await AsyncStorage.setItem('surname', response.data.user.surname|| '');
+      await AsyncStorage.setItem('email', response.data.user.email|| '');
+      await AsyncStorage.setItem('role', response.data.user.roles[0].name || '');
+      await AsyncStorage.setItem('department', response.data.user.department.departmentType.name|| '');
+      await AsyncStorage.setItem('company', response.data.user.department.company.name|| '');
+  
+      navigation.navigate('Home');
+    }).catch(error => {
+      console.error('There was a problem with the fetch operation:', error);
+    });
+  };
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Log In</Text>

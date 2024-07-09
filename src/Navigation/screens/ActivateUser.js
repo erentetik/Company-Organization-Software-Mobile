@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import axios from 'axios';
+import { api } from '../../constants/api';
 
 export default function ActivateUser({ navigation }) {
   const [email, setEmail] = useState('');
@@ -11,14 +12,20 @@ export default function ActivateUser({ navigation }) {
       return;
     }
 
-    const requestUrl = `YOUR_BACKEND_URL/api/auth/activate-account?email=${email}`;
+    const requestUrl = `${api}/api/auth/activate`;
+    console.log(requestUrl)
+    console.log(email)
 
-    try {
-      const response = await axios.post(requestUrl);
-      Alert.alert('Success', 'Activation email sent');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send activation email');
-    }
+    await axios.post(requestUrl, {
+      email: email,
+    }).then(response => {
+      console.log("Fetch operation was successful");
+      console.log(response)
+  
+      navigation.navigate('SignIn');
+    }).catch(error => {
+      console.error('There was a problem with the fetch operation:', error);
+    });
   };
 
   return (

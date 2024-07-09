@@ -4,6 +4,7 @@ import Navbar from '../../../components/navbar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { api } from '../../../constants/api';
+import tableData from '../../../data/citydata';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
 
 const ROWS_PER_PAGE = 5;
@@ -19,18 +20,6 @@ export default function Cities() {
   const [newData, setNewData] = useState({
     name: '',
   });
-
-  const [userRole, setUserRole] = useState('');
-
-  useEffect(() => {
-    const fetchRole = async () => {
-      const role = await AsyncStorage.getItem('role');
-      setUserRole(role);
-    };
-
-    fetchRole();
-  }, []);
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,7 +38,6 @@ export default function Cities() {
       }).then(response => {
         setRows(response.data.content);
         setTotalPages(response.data.totalPages);
-        console.log('response.data: ', response.data);
       }).catch(error => {
         console.error('Error fetching data: ', error);
       });
@@ -58,6 +46,7 @@ export default function Cities() {
     fetchData();
   }, [currentPage]);
 
+
   const handleRowPress = (row) => {
     setSelectedRow(row);
     setEditData(row);
@@ -65,25 +54,27 @@ export default function Cities() {
     setModalVisible(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async() => {
     const token = await AsyncStorage.getItem('token');
     const response = await axios.put(`${api}/api/cities/update/${editData.id}`, {
-      name: editData.name
-    }, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
+        name: editData.name
+      }, 
+      {
+        headers: {
+          "Content-Type": 'application/json',
+          Authorization: `Bearer ${token}`
+        }
     }).then(response => {
       setRows((prevRows) => prevRows.map((row) => (row.id === editData.id ? editData : row)));
       setModalVisible(false);
       setIsEditing(false);
-    }).catch(error => {
+    }
+    ).catch(error => {
       console.error('Error saving data: ', error);
     });
   };
 
-  const handleDelete = async (rowId) => {
+  const handleDelete = async(rowId) => {
     const token = await AsyncStorage.getItem('token');
     const response = await axios.delete(`${api}/api/cities/${rowId}`, {
       headers: {
@@ -93,7 +84,7 @@ export default function Cities() {
     }).then(response => {
       Alert.alert(
         "Delete",
-        "Are you sure you want to delete this city?",
+        "Are you sure you want to delete this town?",
         [
           {
             text: "Cancel",
@@ -111,24 +102,18 @@ export default function Cities() {
     }).catch(error => {
       console.error('Error deleting data: ', error);
     });
+    
   };
-
   const handleAddNew = () => {
     setModalVisible(true);
     setIsEditing(false);
+
   };
-
-  const handleAdd = async () => {
+  
+  const handleAdd = async () => { //fix it
     const token = await AsyncStorage.getItem('token');
-    if (!token) {
-      console.error('No token found');
-      return;
-    }
-    console.log(newData);
-
-    axios.post(`${api}/api/cities/create`, {
-      name: newData.name
-    }, {
+    const response = await axios.post(`${api}/api/cities/create`, {
+      name: newData.name,
       headers: {
         "Content-Type": 'application/json',
         Authorization: `Bearer ${token}`
@@ -147,7 +132,7 @@ export default function Cities() {
       setCurrentPage(currentPage + 1);
     }
   };
-
+  
   const handlePrevPage = () => {
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1);
@@ -155,47 +140,43 @@ export default function Cities() {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.box}>
-      <Text style={styles.boxText}>Name: {item.name}</Text>
-      {userRole !== 'ROLE_USER' && (
-        <View style={styles.actionsContainer}>
-          <Text style={styles.boxText}>Actions: </Text>
-          <TouchableOpacity style={styles.editButton} onPress={() => handleRowPress(item)}>
-            <Ionicons name="pencil-outline" size={20} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
-            <Ionicons name="trash-outline" size={20} color={'red'} />
-          </TouchableOpacity>
-        </View>
-      )}
+    <View style={styles.row}>
+      <Text style={styles.cell}>{item.name}</Text>
+      <TouchableOpacity style={styles.editButton} onPress={() => handleRowPress(item)}>
+        <Ionicons name="pencil-outline" size={20} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item.id)}>
+        <Ionicons name="trash-outline" size={20} color={'red'} />
+      </TouchableOpacity>
     </View>
   );
-  
 
   return (
     <View style={styles.container}>
       <Navbar />
       <View style={styles.content}>
-        <Text style={styles.userText}>CITIES</Text>
-        {userRole !== 'ROLE_USER' && (
-          <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
-            <Ionicons name="add" size={20} color={'white'} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.addButton} onPress={handleAddNew}>
+          <Ionicons name="add" size={20} color={'white'} />
+        </TouchableOpacity>
         <FlatList
           data={rows}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
-          numColumns={1} // Ensure one box per row
+          ListHeaderComponent={() => (
+            <View style={styles.header}>
+              <Text style={styles.headerCell}>Name</Text>
+              <Text style={styles.headerCell}>Actions</Text>
+            </View>
+          )}
         />
         <View style={styles.pagination}>
           <TouchableOpacity onPress={handlePrevPage} disabled={currentPage === 0}>
             <Ionicons name="arrow-back-outline" size={40} color={currentPage === 0 ? 'gray' : 'white'} />
           </TouchableOpacity>
           <Text style={styles.pageNumber}>{currentPage + 1}</Text>
-          <TouchableOpacity onPress={handleNextPage} disabled={currentPage >= totalPages - 1}>
-            <Ionicons name="arrow-forward-outline" size={40} color={currentPage >= totalPages - 1 ? 'gray' : 'white'} />
-          </TouchableOpacity>
+            <TouchableOpacity onPress={handleNextPage} disabled={currentPage >= totalPages - 1}>
+              <Ionicons name="arrow-forward-outline" size={40} color={currentPage >= totalPages - 1 ? 'gray' : 'white'} />
+            </TouchableOpacity>
         </View>
       </View>
 
@@ -208,6 +189,7 @@ export default function Cities() {
             onChangeText={(text) => isEditing ? setEditData({ ...editData, name: text }) : setNewData({ ...newData, name: text })}
             placeholder="Name"
           />
+     
           <View style={styles.buttonContainer}>
             <Button title="Cancel" onPress={() => setModalVisible(false)} />
             <Button title={isEditing ? "Save" : "Add"} onPress={isEditing ? handleSave : handleAdd} />
@@ -225,8 +207,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 10,
-    marginTop: 100, // Changed from top to marginTop
+    top: 100,
   },
   header: {
     flexDirection: 'row',
@@ -236,10 +217,15 @@ const styles = StyleSheet.create({
   headerCell: {
     flex: 1,
     fontWeight: 'bold',
-    marginRight: 15,
+    padding: 5,
+    marginHorizontal: 20,
+    
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    display: 'flex',
     backgroundColor: '#fff',
     padding: 10,
     borderBottomWidth: 1,
@@ -249,34 +235,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 5,
   },
-  box: {
-    flex: 1,
-    backgroundColor: '#fff',
-    margin: 10,
-    padding: 20,
-    borderRadius: 10,
-    elevation: 3,
-  },
-  boxText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  userText: {
-    color: 'white',
-    fontSize: 18,
-    textAlign: 'center',
-    fontWeight: 'bold'
-  },
   editButton: {
-    marginLeft: 10,
+    padding: 5,
+    margin: 2,
   },
   deleteButton: {
-    marginLeft: 10,
+    padding: 5,
+    margin: 2,
   },
   addButton: {
     backgroundColor: 'green',
@@ -285,18 +250,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-end',
+    left: 345,
   },
   buttonText: {
     color: '#fff',
   },
   modalContainer: {
     flex: 1,
+    top: 100,
     padding: 20,
     backgroundColor: '#fff',
-    marginTop: 100, // Changed from top to marginTop
   },
   modalTitle: {
     fontSize: 20,
@@ -308,12 +271,6 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
-    height: 40,
-    justifyContent: 'center',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   pagination: {
     flexDirection: 'row',
@@ -321,10 +278,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     backgroundColor: '#1c1c1c',
-    marginTop: 10, // Changed from bottom to marginTop
+    bottom: 200,
   },
   pageNumber: {
     color: 'white',
     fontSize: 20,
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
 });
+

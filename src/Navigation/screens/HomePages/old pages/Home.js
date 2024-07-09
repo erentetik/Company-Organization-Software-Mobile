@@ -29,6 +29,7 @@ export default function Home() {
         const email = await AsyncStorage.getItem('email');
         const department = await AsyncStorage.getItem('department');
         const company = await AsyncStorage.getItem('company');
+        
         setUserData({
           name,
           surname,
@@ -44,7 +45,7 @@ export default function Home() {
 
     fetchUserData();
   }, []);
-  console.log(userData.role);
+
   const handleSignOut = () => {
     Alert.alert(
         "Sign Out",

@@ -1,0 +1,1 @@
+export const api = "https://iD-2.eu-north-1.elasticbeanstalk.com"

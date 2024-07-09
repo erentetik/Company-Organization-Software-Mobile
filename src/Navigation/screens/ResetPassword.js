@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import axios from 'axios';
+import { api } from '../../constants/api';
 
-export default function ResetPassword({ navigation }) {
+export default function ActivateUser({ navigation }) {
   const [email, setEmail] = useState('');
 
   const handleSubmit = async () => {
@@ -11,14 +12,18 @@ export default function ResetPassword({ navigation }) {
       return;
     }
 
-    const requestUrl = `YOUR_BACKEND_URL/api/auth/reset-password?email=${email}`;
+    const requestUrl = `${api}/api/auth/resetPassword`;
 
-    try {
-      const response = await axios.post(requestUrl);
-      Alert.alert('Success', 'Verification email sent');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to send verification email');
-    }
+    await axios.post(requestUrl, {
+      email: email,
+    }).then(response => {
+      console.log("Fetch operation was successful");
+      console.log(response)
+  
+      navigation.navigate('SignIn');
+    }).catch(error => {
+      console.error('There was a problem with the fetch operation:', error);
+    });
   };
 
   return (
@@ -35,7 +40,7 @@ export default function ResetPassword({ navigation }) {
         />
       </View>
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Send Verification Email</Text>
+        <Text style={styles.buttonText}>Send Activation Email</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.linkText} onPress={() => navigation.navigate('SignIn')}>
         <Text style={styles.buttonText}>I already have an account.</Text>

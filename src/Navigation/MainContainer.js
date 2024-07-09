@@ -25,11 +25,13 @@ export default function App() {
           headerShown: false, // Hide header for all screens
         }}
       >
+        
+        <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="SignIn" component={SignIn} />
         <Stack.Screen name="ResetPassword" component={ResetPassword} />
         <Stack.Screen name="SetNewPassword" component={SetNewPassword} />
-        <Stack.Screen name="ActivateUser" component={ActivateUser} />
-        <Stack.Screen name="Home" component={Home} />
+        <Stack.Screen name="ActivateUser" component={ActivateUser} /> 
+        
         <Stack.Screen name="Users" component={Users} />
         <Stack.Screen name="Companies" component={Companies} />
         <Stack.Screen name="Towns" component={Towns} />

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Button, Alert } from 'react-native';
 import Navbar from '../../../components/navbar';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../../../constants/api';
+import tableData from '../../../data/TownData';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { api } from '../../../constants/api';
 
 const ROWS_PER_PAGE = 5;
 
@@ -15,19 +16,54 @@ export default function Towns() {
   const [modalVisible, setModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [regionModalVisible, setRegionModalVisible] = useState(false);
-  const [cityModalVisible, setCityModalVisible] = useState(false);
   const [editData, setEditData] = useState({});
   const [newData, setNewData] = useState({
     name: '',
-    regionId: '',
-    cityId: '',
+    region: '',
+    city: '',
   });
   const [currentPage, setCurrentPage] = useState(0);
 
-  const [userRole, setUserRole] = useState('');
+  const [regionModalVisible, setRegionModalVisible] = useState(false);
   const [regions, setRegions] = useState([]);
+  const [cityModalVisible, setCityModalVisible] = useState(false);
   const [cities, setCities] = useState([]);
+
+  const [userRole, setUserRole] = useState('');
+
+  useEffect(() => {
+    const fetchRole = async () => {
+      const role = await AsyncStorage.getItem('role');
+      setUserRole(role);
+    };
+
+    fetchRole();
+  }, []);
+
+  useEffect(() => {
+    fetchRegions();
+  }, [currentPage]);
+
+  const fetchRegions = async () => {
+    const token = await AsyncStorage.getItem('token');
+
+    axios.get(`${api}/api/towns`, {
+      params: {
+        page: currentPage,
+        size: ROWS_PER_PAGE,
+        sort: 'id,asc'
+      },
+      headers: {
+        "Content-Type": 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(response => {
+      setTowns(response.data.content);
+      setTotalPages(response.data.totalPages);
+    }).catch(error => {
+      console.error('Error fetching data: ', error);
+    });
+  };
 
   const handleRegionModal = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -70,83 +106,27 @@ export default function Towns() {
       setNewData({ ...newData, cityId: item.id });
     }
     setCityModalVisible(false);
-  }; 
-
-  useEffect(() => {
-    const fetchRole = async () => {
-      const role = await AsyncStorage.getItem('role');
-      setUserRole(role);
-    };
-
-    fetchRole();
-  }, []);
-
-  useEffect(() => {
-    fetchTowns();
-  }, [currentPage]);
-
-  const fetchTowns = async () => {
-    const token = await AsyncStorage.getItem('token');
-
-    axios.get(`${api}/api/towns`, {
-      params: {
-        page: currentPage,
-        size: ROWS_PER_PAGE,
-        sort: 'id,asc'
-      },
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setTowns(response.data.content);
-      setTotalPages(response.data.totalPages);
-    }).catch(error => {
-      console.error('Error fetching data: ', error);
-    });
-  };
-
-  const handleCancel = () => {
-    setEditData({});
-    setNewData({});
   };
 
   const handleRowPress = (town) => {
-  setSelectedTown(town);
-  setEditData({
-    id: town.id,
-    name: town.name,
-    regionId: town.region.id,
-    regionName: town.region.name, // Added region name
-    cityId: town.city.id,
-    cityName: town.city.name // Added city name
-  });
-  setIsEditing(true);
-  setModalVisible(true);
-};
+    setSelectedTown(town);
+    setEditData(town);
+    setIsEditing(true);
+    setModalVisible(true);
+  };
+
   const handleShowData = (town) => {
     setSelectedTown(town);
     setDetailModalVisible(true);
   };
 
-  const handleSave = async () => {
-    const token = await AsyncStorage.getItem('token');
-
-    axios.put(`${api}/api/towns/update/${editData.id}`, editData, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setTowns((prevTowns) => prevTowns.map((town) => (town.id === editData.id ? editData : town)));
-      setModalVisible(false);
-      setIsEditing(false);
-    }).catch(error => {
-      console.error('Error saving data: ', error);
-    });
+  const handleSave = () => {
+    setRows((prevRows) => prevRows.map((row) => (row.id === editData.id ? editData : row)));
+    setModalVisible(false);
+    setIsEditing(false);
   };
 
-  const handleDelete = async (townId) => {
+  const handleDelete = (rowId) => {
     Alert.alert(
       "Delete",
       "Are you sure you want to delete this town?",
@@ -157,19 +137,8 @@ export default function Towns() {
         },
         {
           text: "Delete",
-          onPress: async () => {
-            const token = await AsyncStorage.getItem('token');
-
-            axios.delete(`${api}/api/towns/${townId}`, {
-              headers: {
-                "Content-Type": 'application/json',
-                Authorization: `Bearer ${token}`
-              }
-            }).then(response => {
-              setTowns((prevTowns) => prevTowns.filter((town) => town.id !== townId));
-            }).catch(error => {
-              console.error('Error deleting data: ', error);
-            });
+          onPress: () => {
+            setRows((prevRows) => prevRows.filter((row) => row.id !== rowId));
           }
         }
       ],
@@ -180,39 +149,20 @@ export default function Towns() {
   const handleAddNew = () => {
     setNewData({
       name: '',
-      regionId: '',
-      cityId: '',
+      region: '',
+      city: '',
     });
     setIsEditing(false);
     setModalVisible(true);
   };
 
-  const handleAdd = async () => {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) {
-      console.error('No token found');
-      return;
-    }
-
-    axios.post(`${api}/api/towns/create`, {
-      name: newData.name,
-      regionId: newData.regionId,
-      cityId: newData.cityId
-    }, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setTowns([...towns, response.data]);
-      setModalVisible(false);
-    }).catch(error => {
-      console.error('Error adding data: ', error);
-    });
+  const handleAdd = () => {
+    setRows([...rows, newData]);
+    setModalVisible(false);
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages - 1) {
+    if ((currentPage + 1) * ROWS_PER_PAGE < rows.length) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -226,7 +176,7 @@ export default function Towns() {
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.box} onPress={() => handleShowData(item)}>
       <Text style={styles.boxText}>Name: {item.name}</Text>
-      <Text style={styles.boxText}>City: {item.city.name}</Text>
+      <Text style={styles.boxText}>City: {item.city}</Text>
       {userRole !== 'ROLE_USER' && (
         <View style={styles.actionsContainer}>
           <Text style={styles.boxText}>Actions: </Text>
@@ -240,6 +190,7 @@ export default function Towns() {
       )}
     </TouchableOpacity>
   );
+  
 
   return (
     <View style={styles.container}>
@@ -262,8 +213,8 @@ export default function Towns() {
             <Ionicons name="arrow-back-outline" size={40} color={currentPage === 0 ? 'gray' : 'white'} />
           </TouchableOpacity>
           <Text style={styles.pageNumber}>{currentPage + 1}</Text>
-          <TouchableOpacity onPress={handleNextPage} disabled={currentPage >= totalPages - 1}>
-            <Ionicons name="arrow-forward-outline" size={40} color={currentPage >= totalPages - 1 ? 'gray' : 'white'} />
+          <TouchableOpacity onPress={handleNextPage} disabled={(currentPage + 1) * ROWS_PER_PAGE >= towns.length}>
+            <Ionicons name="arrow-forward-outline" size={40} color={(currentPage + 1) * ROWS_PER_PAGE >= towns.length ? 'gray' : 'white'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -275,25 +226,24 @@ export default function Towns() {
           {selectedTown && (
             <>
               <Text style={styles.boxText}>Name: {selectedTown.name}</Text>
-              <Text style={styles.boxText}>Region: {selectedTown.region.name}</Text>
-              <Text style={styles.boxText}>City: {selectedTown.city.name}</Text>
+              <Text style={styles.boxText}>Region: {selectedTown.region}</Text>
+              <Text style={styles.boxText}>City: {selectedTown.city}</Text>
             </>
           )}
           <Button title="Close" onPress={() => setDetailModalVisible(false)} />
         </View>
       </Modal>
 
-      {/* Add/Edit Modal */}
       <Modal visible={modalVisible} animationType="slide">
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>{isEditing ? 'Edit Town' : 'Add Town'}</Text>
+          <Text style={styles.modalTitle}>{isEditing ? 'Edit Data' : 'Add Data'}</Text>
           <TextInput
             style={styles.input}
             value={isEditing ? editData.name : newData.name}
             onChangeText={(text) => isEditing ? setEditData({ ...editData, name: text }) : setNewData({ ...newData, name: text })}
             placeholder="Name"
           />
-          {/* REGION */}
+          {/* CHOOSE REGION */}
           <View>
             <TouchableOpacity
               style={styles.input}
@@ -304,8 +254,8 @@ export default function Towns() {
             >
               <Text style={styles.roleText}>
                 {isEditing 
-                  ? (editData.regionName || 'Region') // Display region name when editing
-                  : (newData.regionName || 'Region')}
+                  ? (regions.find(region => region.id === editData.regionId)?.name || 'Region') 
+                  : (regions.find(region => region.id === newData.regionId)?.name || 'Region')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -328,8 +278,7 @@ export default function Towns() {
               <Button title="Cancel" onPress={() => setRegionModalVisible(false)} />
             </View>
           </Modal>
-
-          {/* CITY */}
+          {/* CHOOSE City  */}
           <View>
             <TouchableOpacity
               style={styles.input}
@@ -340,8 +289,8 @@ export default function Towns() {
             >
               <Text style={styles.roleText}>
                 {isEditing 
-                  ? (editData.cityName || 'City') // Display city name when editing
-                  : (newData.cityName || 'City')}
+                  ? (cities.find(city => city.id === editData.cityId)?.name || 'City') 
+                  : (cities.find(city => city.id === newData.cityId)?.name || 'City')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -366,15 +315,11 @@ export default function Towns() {
           </Modal>
 
           <View style={styles.buttonContainer}>
-            <Button title="Cancel" onPress={() => {
-              setModalVisible(false);
-              handleCancel();
-            }} />
+            <Button title="Cancel" onPress={() => setModalVisible(false)} />
             <Button title={isEditing ? "Save" : "Add"} onPress={isEditing ? handleSave : handleAdd} />
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
@@ -387,7 +332,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 10,
-    marginTop: 100,
+    top: 100,
   },
   header: {
     flexDirection: 'row',
@@ -397,7 +342,7 @@ const styles = StyleSheet.create({
   headerCell: {
     flex: 1,
     fontWeight: 'bold',
-    marginRight: 15,
+    marginHorizontal: 5,
   },
   row: {
     flexDirection: 'row',
@@ -407,8 +352,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
   },
   cell: {
-    flex: 1,
+    flex: 0.31,
     padding: 5,
+    marginHorizontal: -2,
   },
   box: {
     flex: 1,
@@ -417,7 +363,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    paddingBottom: 10,
   },
   boxText: {
     fontSize: 16,
@@ -452,7 +397,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#fff',
-    marginTop: 100,
+    top: 100,
   },
   modalTitle: {
     fontSize: 20,
@@ -467,12 +412,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
   },
-  userText: {
-    color: 'white',
-    fontSize: 18,
-    textAlign: 'center',
-    fontWeight: 'bold'
-  },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -483,7 +422,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 10,
     backgroundColor: '#1c1c1c',
-    marginTop: 10,
+    bottom: 100,
   },
   pageNumber: {
     color: 'white',
@@ -499,8 +438,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: 20,
     textAlign: 'center',
-    paddingTop: 40,
-
   },
   roleButton: {
     padding: 10,
@@ -516,5 +453,11 @@ const styles = StyleSheet.create({
   disabledInput: {
     backgroundColor: '#f0f0f0',
     color: '#ccc',
+  },
+  userText: {
+    color: 'white',
+    fontSize: 18,
+    textAlign: 'center',
+    fontWeight: 'bold'
   },
 });
