@@ -5,6 +5,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../../constants/api';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
+import SortPicker from '../../../components/sortPicker';
+import Toast from 'react-native-toast-message'; // Import Toast
 
 const ROWS_PER_PAGE = 5;
 
@@ -21,7 +23,9 @@ export default function Towns() {
   const [newData, setNewData] = useState({
     name: '',
     regionId: '',
+    regionName: '',
     cityId: '',
+    cityName: '',
   });
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -29,48 +33,15 @@ export default function Towns() {
   const [regions, setRegions] = useState([]);
   const [cities, setCities] = useState([]);
 
-  const handleRegionModal = async () => {
-    const token = await AsyncStorage.getItem('token');
-    axios.get(`${api}/api/regions/list`, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setRegions(response.data);
-    }).catch(error => {
-      console.error('Error fetching company types: ', error);
-    });
-  };
-  const handleRegionSelect = (item) => {
-    if (isEditing) {
-      setEditData({ ...editData, regionId: item.id });
-    } else {
-      setNewData({ ...newData, regionId: item.id });
-    }
-    setRegionModalVisible(false);
-  };
-  const handleCityModal = async () => {
-    const token = await AsyncStorage.getItem('token');
-    axios.get(`${api}/api/city/list`, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setCities(response.data);
-    }).catch(error => {
-      console.error('Error fetching towns: ', error);
-    });
-  };
-  const handleCitySelect = (item) => {
-    if (isEditing) {
-      setEditData({ ...editData, cityId: item.id });
-    } else {
-      setNewData({ ...newData, cityId: item.id });
-    }
-    setCityModalVisible(false);
-  }; 
+  const [sortField, setSortField] = useState('id');
+  const [sortOrder, setSortOrder] = useState('asc');
+
+  const sortFields = [
+    { label: 'ID', value: 'id' },
+    { label: 'Name', value: 'name' },
+    { label: 'Region', value: 'region' },
+    { label: 'City', value: 'city' }
+  ];
 
   useEffect(() => {
     const fetchRole = async () => {
@@ -83,7 +54,7 @@ export default function Towns() {
 
   useEffect(() => {
     fetchTowns();
-  }, [currentPage]);
+  }, [currentPage, sortField, sortOrder]);
 
   const fetchTowns = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -92,7 +63,7 @@ export default function Towns() {
       params: {
         page: currentPage,
         size: ROWS_PER_PAGE,
-        sort: 'id,asc'
+        sort: `${sortField},${sortOrder}`
       },
       headers: {
         "Content-Type": 'application/json',
@@ -108,22 +79,29 @@ export default function Towns() {
 
   const handleCancel = () => {
     setEditData({});
-    setNewData({});
+    setNewData({
+      name: '',
+      regionId: '',
+      regionName: '',
+      cityId: '',
+      cityName: '',
+    });
   };
 
   const handleRowPress = (town) => {
-  setSelectedTown(town);
-  setEditData({
-    id: town.id,
-    name: town.name,
-    regionId: town.region.id,
-    regionName: town.region.name, // Added region name
-    cityId: town.city.id,
-    cityName: town.city.name // Added city name
-  });
-  setIsEditing(true);
-  setModalVisible(true);
-};
+    setSelectedTown(town);
+    setEditData({
+      id: town.id,
+      name: town.name,
+      regionId: town.region.id,
+      regionName: town.region.name,
+      cityId: town.city.id,
+      cityName: town.city.name,
+    });
+    setIsEditing(true);
+    setModalVisible(true);
+  };
+
   const handleShowData = (town) => {
     setSelectedTown(town);
     setDetailModalVisible(true);
@@ -131,18 +109,30 @@ export default function Towns() {
 
   const handleSave = async () => {
     const token = await AsyncStorage.getItem('token');
-
+    console.log('Edit data: ', editData)
+  
     axios.put(`${api}/api/towns/update/${editData.id}`, editData, {
       headers: {
         "Content-Type": 'application/json',
         Authorization: `Bearer ${token}`
       }
     }).then(response => {
-      setTowns((prevTowns) => prevTowns.map((town) => (town.id === editData.id ? editData : town)));
+      const updatedTown = response.data;
+      setTowns((prevTowns) => prevTowns.map((town) => (town.id === editData.id ? updatedTown : town)));
       setModalVisible(false);
       setIsEditing(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Town updated successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error saving data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error saving data: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
 
@@ -167,8 +157,18 @@ export default function Towns() {
               }
             }).then(response => {
               setTowns((prevTowns) => prevTowns.filter((town) => town.id !== townId));
+              Toast.show({
+                type: 'success',
+                text1: 'Town deleted successfully',
+                position: 'bottom'
+              });
             }).catch(error => {
               console.error('Error deleting data: ', error);
+              Toast.show({
+                type: 'error',
+                text1: `Error deleting town: ${error.message}`,
+                position: 'bottom'
+              });
             });
           }
         }
@@ -181,7 +181,9 @@ export default function Towns() {
     setNewData({
       name: '',
       regionId: '',
+      regionName: '',
       cityId: '',
+      cityName: '',
     });
     setIsEditing(false);
     setModalVisible(true);
@@ -206,8 +208,18 @@ export default function Towns() {
     }).then(response => {
       setTowns([...towns, response.data]);
       setModalVisible(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Town added successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error adding data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error adding town: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
 
@@ -221,6 +233,52 @@ export default function Towns() {
     if (currentPage > 0) {
       setCurrentPage(currentPage - 1);
     }
+  };
+
+  const handleRegionModal = async () => {
+    const token = await AsyncStorage.getItem('token');
+    axios.get(`${api}/api/regions/list`, {
+      headers: {
+        "Content-Type": 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(response => {
+      setRegions(response.data);
+    }).catch(error => {
+      console.error('Error fetching regions: ', error);
+    });
+  };
+
+  const handleRegionSelect = (item) => {
+    if (isEditing) {
+      setEditData({ ...editData, regionId: item.id, regionName: item.name });
+    } else {
+      setNewData({ ...newData, regionId: item.id, regionName: item.name });
+    }
+    setRegionModalVisible(false);
+  };
+
+  const handleCityModal = async () => {
+    const token = await AsyncStorage.getItem('token');
+    axios.get(`${api}/api/cities/list`, {
+      headers: {
+        "Content-Type": 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(response => {
+      setCities(response.data);
+    }).catch(error => {
+      console.error('Error fetching cities: ', error);
+    });
+  };
+
+  const handleCitySelect = (item) => {
+    if (isEditing) {
+      setEditData({ ...editData, cityId: item.id, cityName: item.name });
+    } else {
+      setNewData({ ...newData, cityId: item.id, cityName: item.name });
+    }
+    setCityModalVisible(false);
   };
 
   const renderItem = ({ item }) => (
@@ -251,6 +309,13 @@ export default function Towns() {
             <Ionicons name="add" size={20} color={'white'} />
           </TouchableOpacity>
         )}
+        <SortPicker 
+          sortField={sortField} 
+          setSortField={setSortField} 
+          sortOrder={sortOrder} 
+          setSortOrder={setSortOrder} 
+          sortFields={sortFields} 
+        />
         <FlatList
           data={towns}
           renderItem={renderItem}
@@ -304,7 +369,7 @@ export default function Towns() {
             >
               <Text style={styles.roleText}>
                 {isEditing 
-                  ? (editData.regionName || 'Region') // Display region name when editing
+                  ? (editData.regionName || 'Region') 
                   : (newData.regionName || 'Region')}
               </Text>
             </TouchableOpacity>
@@ -340,7 +405,7 @@ export default function Towns() {
             >
               <Text style={styles.roleText}>
                 {isEditing 
-                  ? (editData.cityName || 'City') // Display city name when editing
+                  ? (editData.cityName || 'City') 
                   : (newData.cityName || 'City')}
               </Text>
             </TouchableOpacity>
@@ -375,6 +440,8 @@ export default function Towns() {
         </View>
       </Modal>
 
+      {/* Toast Config */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }
@@ -500,7 +567,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     paddingTop: 40,
-
   },
   roleButton: {
     padding: 10,

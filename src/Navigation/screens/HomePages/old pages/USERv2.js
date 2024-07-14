@@ -4,9 +4,7 @@ import Navbar from '../../../components/navbar';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../../constants/api';
-import { Ionicons } from '@expo/vector-icons';
-import SortPicker from '../../../components/sortPicker';
-import Toast from 'react-native-toast-message'; // Import Toast
+import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
 
 const ROWS_PER_PAGE = 5;
 
@@ -38,19 +36,6 @@ export default function Users() {
   const [currentPage, setCurrentPage] = useState(0);
   const [userRole, setUserRole] = useState('');
 
-  const [sortField, setSortField] = useState('id');
-  const [sortOrder, setSortOrder] = useState('asc');
-
-  const sortFields = [
-    { label: 'ID', value: 'id' },
-    { label: 'Name', value: 'name' },
-    { label: 'Surname', value: 'surname' },
-    { label: 'Role', value: 'role' },
-    { label: 'Email', value: 'email' },
-    { label: 'Company', value: 'company' },
-    { label: 'Department', value: 'department' },
-  ];
-
   useEffect(() => {
     const fetchRole = async () => {
       const role = await AsyncStorage.getItem('role');
@@ -68,7 +53,7 @@ export default function Users() {
           params: {
             page: currentPage,
             size: ROWS_PER_PAGE,
-            sort: `${sortField},${sortOrder}`
+            sort: 'id,asc'
           },
           headers: {
             "Content-Type": 'application/json',
@@ -83,7 +68,7 @@ export default function Users() {
     };
     
     fetchData();
-  }, [currentPage, sortField, sortOrder]);
+  }, [currentPage]);
 
   const handleCancel = () => {
     setEditData({});
@@ -95,48 +80,34 @@ export default function Users() {
     setEditData({
       ...row,
       roleId: row.roles.length > 0 ? row.roles[0].id : '',
-      roleName: row.roles.length > 0 ? row.roles[0].name : 'No Role',
-      companyName: row.department.company.name,
       companyId: row.department.company.id,
       departmentId: row.department.departmentType.id,
-      departmentName: row.department.departmentType.name,
     });
     setIsEditing(true);
     setModalVisible(true);
   };
+  
 
   const handleSave = async () => {
     const token = await AsyncStorage.getItem('token');
-    
-    console.log("name:", editData.name, "surname:", editData.surname, "email:", editData.email, "departmentId:", editData.departmentId, "roleId:", editData.roleId);
-    console.log("editData.id: ", editData.id);
-    console.log("token: ", token);
     try {
-      await axios.put(`${api}/api/users/${editData.id}`, {
+      const response = await axios.put(`${api}/api/users/${editData.id}`, {
         name: editData.name,
         surname: editData.surname,
         email: editData.email,
         departmentId: editData.departmentId,
         roleId: editData.roleId,
-      }, {
+      },
+      {
         headers: {
           "Content-Type": 'application/json',
           Authorization: `Bearer ${token}`
-        },
-        params: {
-          userId: editData.id
         }
-        
       });
       setRows((prevRows) => prevRows.map((row) => (row.id === editData.id ? editData : row)));
       setModalVisible(false);
       setIsEditing(false);
       setErrorMessage('');
-      Toast.show({
-        type: 'success',
-        text1: 'User updated successfully',
-        position: 'bottom'
-      });
     } catch (error) {
       if (error.response) {
         console.error('Error saving data: ', error.response.data);
@@ -148,14 +119,8 @@ export default function Users() {
         console.error('Error saving data: ', error.message);
         setErrorMessage(`Error: ${error.message}`);
       }
-      Toast.show({
-        type: 'error',
-        text1: `Error saving data: ${error.message}`,
-        position: 'bottom'
-      });
     }
   };
-  
 
   const handleRoleModal = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -249,18 +214,8 @@ export default function Users() {
               }
             }).then(response => {
               setRows((prevRows) => prevRows.filter((row) => row.id !== userId));
-              Toast.show({
-                type: 'success',
-                text1: 'User deleted successfully',
-                position: 'bottom'
-              });
             }).catch(error => {
               console.error('Error deleting data: ', error);
-              Toast.show({
-                type: 'error',
-                text1: `Error deleting user: ${error.message}`,
-                position: 'bottom'
-              });
             });
           }
         }
@@ -308,18 +263,8 @@ export default function Users() {
       setTotalPages(updatedResponse.data.totalPages);
       setModalVisible(false);
       setErrorMessage('');
-      Toast.show({
-        type: 'success',
-        text1: 'User added successfully',
-        position: 'bottom'
-      });
     }).catch(error => {
       console.error('Error adding data: ', error);
-      Toast.show({
-        type: 'error',
-        text1: `Error adding user: ${error.message}`,
-        position: 'bottom'
-      });
     });
   };
 
@@ -368,13 +313,6 @@ export default function Users() {
             <Ionicons name="add" size={20} color={'white'} />
           </TouchableOpacity>
         )}
-        <SortPicker 
-          sortField={sortField} 
-          setSortField={setSortField} 
-          sortOrder={sortOrder} 
-          setSortOrder={setSortOrder} 
-          sortFields={sortFields} 
-        />
         <FlatList
           data={rows}
           renderItem={renderItem}
@@ -442,9 +380,10 @@ export default function Users() {
             >
               <Text style={styles.roleText}>
                 {isEditing 
-                  ? (editData.roleName || 'Role') 
+                  ? (roles.find(role => role.id === editData.roleId)?.name || 'Role') 
                   : (roles.find(role => role.id === newData.roleId)?.name || 'Role')}
               </Text>
+
             </TouchableOpacity>
           </View>
 
@@ -458,7 +397,7 @@ export default function Users() {
                     style={styles.roleButton}
                     onPress={() => {
                       if (isEditing) {
-                        setEditData({ ...editData, roleId: item.id, roleName: item.name });
+                        setEditData({ ...editData, roleId: item.id });
                       } else {
                         setNewData({ ...newData, roleId: item.id });
                       }
@@ -473,7 +412,6 @@ export default function Users() {
               <Button title="Cancel" onPress={() => setRoleModalVisible(false)} />
             </View>
           </Modal>
-
           {/* CHOOSE COMPANY--------------- */}
           <View>
             <TouchableOpacity
@@ -526,8 +464,8 @@ export default function Users() {
             >
               <Text style={styles.roleText}>
                 {isEditing 
-                 ? (editData.departmentName || 'Department') 
-                 : (newData.departmentName || 'Department')}
+                  ? (departments.find(department => department.departmentType.id === editData.departmentId)?.departmentType.name || 'Department') 
+                  : (departments.find(department => department.departmentType.id === newData.departmentId)?.departmentType.name || 'Department')}
               </Text>
 
             </TouchableOpacity>
@@ -570,8 +508,6 @@ export default function Users() {
           </View>
         </View>
       </Modal>
-      {/* Toast Config */}
-      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }

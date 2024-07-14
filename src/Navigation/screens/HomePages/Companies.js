@@ -4,7 +4,9 @@ import Navbar from '../../../components/navbar';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../../constants/api';
-import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
+import { Ionicons } from '@expo/vector-icons';
+import SortPicker from '../../../components/sortPicker';
+import Toast from 'react-native-toast-message'; // Import Toast
 
 const ROWS_PER_PAGE = 5;
 
@@ -31,6 +33,17 @@ export default function Companies() {
 
   const [userRole, setUserRole] = useState('');
 
+  const [sortField, setSortField] = useState('id');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const sortFields = [
+    { label: 'ID', value: 'id' },
+    { label: 'Name', value: 'name' },
+    { label: 'Short Name', value: 'shortName' },
+    { label: 'Company Type', value: 'companyType.name' },
+    { label: 'Town', value: 'town.name' },
+    { label: 'Address Street', value: 'addressStreet' },
+  ];
+
   useEffect(() => {
     const fetchRole = async () => {
       const role = await AsyncStorage.getItem('role');
@@ -40,54 +53,9 @@ export default function Companies() {
     fetchRole();
   }, []);
 
-
-  const handleCompanyTypeModal = async () => {
-    const token = await AsyncStorage.getItem('token');
-    axios.get(`${api}/api/companyTypes`, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setCompanyTypes(response.data);
-    }).catch(error => {
-      console.error('Error fetching company types: ', error);
-    });
-  };
-  const handleCompanyTypeSelect = (item) => {
-    if (isEditing) {
-      setEditData({ ...editData, companyTypeId: item.id });
-    } else {
-      setNewData({ ...newData, companyTypeId: item.id });
-    }
-    setCompanyTypeModalVisible(false);
-  };
-  const handleTownModal = async () => {
-    const token = await AsyncStorage.getItem('token');
-    axios.get(`${api}/api/towns/list`, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      setTowns(response.data);
-      console.log(response.data);
-    }).catch(error => {
-      console.error('Error fetching towns: ', error);
-    });
-  };
-  const handleTownSelect = (item) => {
-    if (isEditing) {
-      setEditData({ ...editData, townId: item.id });
-    } else {
-      setNewData({ ...newData, townId: item.id });
-    }
-    setTownModalVisible(false);
-  };
-
   useEffect(() => {
     fetchCompanies();
-  }, [currentPage]);
+  }, [currentPage, sortField, sortOrder]);
 
   const fetchCompanies = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -95,7 +63,7 @@ export default function Companies() {
       params: {
         page: currentPage,
         size: ROWS_PER_PAGE,
-        sort: 'id,asc'
+        sort: `${sortField},${sortOrder}`
       },
       headers: {
         "Content-Type": 'application/json',
@@ -116,7 +84,11 @@ export default function Companies() {
 
   const handleRowPress = (company) => {
     setSelectedCompany(company);
-    setEditData(company);
+    setEditData({
+      ...company,
+      companyTypeId: company.companyType?.id || '',
+      townId: company.town?.id || ''
+    });
     setIsEditing(true);
     setModalVisible(true);
   };
@@ -128,12 +100,12 @@ export default function Companies() {
 
   const handleSave = async () => {
     const token = await AsyncStorage.getItem('token');
-    
+
     axios.put(`${api}/api/company/update/${editData.id}`, {
       name: editData.name,
       shortName: editData.shortName,
-      companyTypeId: editData.companyType.id,
-      townId: editData.town.id,
+      companyTypeId: editData.companyTypeId,
+      townId: editData.townId,
       addressStreet: editData.addressStreet
     }, {
       headers: {
@@ -147,11 +119,20 @@ export default function Companies() {
       setCompanies((prevCompanies) => prevCompanies.map((company) => (company.id === editData.id ? editData : company)));
       setModalVisible(false);
       setIsEditing(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Company updated successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error saving data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error saving data: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
-  
 
   const handleDelete = async (companyId) => {
     Alert.alert(
@@ -173,8 +154,18 @@ export default function Companies() {
               }
             }).then(response => {
               setCompanies((prevCompanies) => prevCompanies.filter((company) => company.id !== companyId));
+              Toast.show({
+                type: 'success',
+                text1: 'Company deleted successfully',
+                position: 'bottom'
+              });
             }).catch(error => {
               console.error('Error deleting data: ', error);
+              Toast.show({
+                type: 'error',
+                text1: `Error deleting company: ${error.message}`,
+                position: 'bottom'
+              });
             });
           }
         }
@@ -198,8 +189,18 @@ export default function Companies() {
     }).then(response => {
       setCompanies([...companies, response.data]);
       setModalVisible(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Company added successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error adding data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error adding company: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
 
@@ -214,7 +215,53 @@ export default function Companies() {
       setCurrentPage(currentPage - 1);
     }
   };
-  
+
+  const handleCompanyTypeModal = async () => {
+    const token = await AsyncStorage.getItem('token');
+    axios.get(`${api}/api/companyTypes`, {
+      headers: {
+        "Content-Type": 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(response => {
+      setCompanyTypes(response.data);
+    }).catch(error => {
+      console.error('Error fetching company types: ', error);
+    });
+  };
+
+  const handleCompanyTypeSelect = (item) => {
+    if (isEditing) {
+      setEditData({ ...editData, companyTypeId: item.id, companyType: item });
+    } else {
+      setNewData({ ...newData, companyTypeId: item.id, companyType: item });
+    }
+    setCompanyTypeModalVisible(false);
+  };
+
+  const handleTownModal = async () => {
+    const token = await AsyncStorage.getItem('token');
+    axios.get(`${api}/api/towns/list`, {
+      headers: {
+        "Content-Type": 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(response => {
+      setTowns(response.data);
+      console.log(response.data);
+    }).catch(error => {
+      console.error('Error fetching towns: ', error);
+    });
+  };
+
+  const handleTownSelect = (item) => {
+    if (isEditing) {
+      setEditData({ ...editData, townId: item.id, town: item });
+    } else {
+      setNewData({ ...newData, townId: item.id, town: item });
+    }
+    setTownModalVisible(false);
+  };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.box} onPress={() => handleShowData(item)}>
@@ -233,7 +280,6 @@ export default function Companies() {
       )}
     </TouchableOpacity>
   );
-  
 
   return (
     <View style={styles.container}>
@@ -245,6 +291,13 @@ export default function Companies() {
             <Ionicons name="add" size={20} color={'white'} />
           </TouchableOpacity>
         )}
+        <SortPicker
+          sortFields={sortFields}
+          setSortField={setSortField}
+          setSortOrder={setSortOrder}
+          sortOrder={sortOrder}
+          sortField={sortField}
+        />
         <FlatList
           data={companies}
           renderItem={renderItem}
@@ -261,7 +314,6 @@ export default function Companies() {
           </TouchableOpacity>
         </View>
       </View>
-    
 
       {/* Detail Modal */}
       <Modal visible={detailModalVisible} animationType="slide">
@@ -381,6 +433,9 @@ export default function Companies() {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Config */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }
@@ -423,7 +478,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 10,
     elevation: 3,
-    paddingBottom: 10,
+    paddingBottom:10,
   },
   boxText: {
     fontSize: 16,
@@ -517,7 +572,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     paddingTop: 40,
-
   },
   roleButton: {
     padding: 10,

@@ -45,26 +45,7 @@ export default function Home() {
     fetchUserData();
   }, []);
   console.log(userData.role);
-  const handleSignOut = () => {
-    Alert.alert(
-        "Sign Out",
-        "Are you sure you want to sign out?",
-        [
-            {
-                text: "Cancel", 
-                style: "cancel"
-            },
-            {
-                text: "Sign Out",
-                onPress: async () => {
-                  await clearStorage();
-                  navigation.navigate('SignIn');
-                }
-            }
-        ],  
-        { cancelable: false }
-    );
-};
+  
   return (
     <View style={styles.container}>
       <Navbar />
@@ -77,9 +58,7 @@ export default function Home() {
       <Text style={styles.text}>Email: {userData.email}</Text>
       <Text style={styles.text}>Department: {userData.department}</Text>
       <Text style={styles.text}>Company: {userData.company}</Text>
-      <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
-        <Text style={styles.logoutButtonText}>Log Out</Text>
-      </TouchableOpacity>
+      
     </View>
   );
 }

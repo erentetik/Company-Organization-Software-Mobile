@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { api } from '../../../constants/api';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
+import SortPicker from '../../../components/sortPicker';
+import Toast from 'react-native-toast-message'; // Import Toast
 
 const ROWS_PER_PAGE = 5;
 
@@ -22,6 +24,13 @@ export default function Cities() {
 
   const [userRole, setUserRole] = useState('');
 
+  const [sortField, setSortField] = useState('id');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const sortFields = [
+    { label: 'ID', value: 'id' },
+    { label: 'Name', value: 'name' },
+  ];
+
   useEffect(() => {
     const fetchRole = async () => {
       const role = await AsyncStorage.getItem('role');
@@ -31,7 +40,6 @@ export default function Cities() {
     fetchRole();
   }, []);
 
-
   useEffect(() => {
     const fetchData = async () => {
       const token = await AsyncStorage.getItem('token');
@@ -40,7 +48,7 @@ export default function Cities() {
         params: {
           page: currentPage,
           size: ROWS_PER_PAGE,
-          sort: 'id,asc'
+          sort: `${sortField},${sortOrder}`
         },
         headers: {
           "Content-Type": 'application/json',
@@ -56,7 +64,7 @@ export default function Cities() {
     };
 
     fetchData();
-  }, [currentPage]);
+  }, [currentPage, sortField, sortOrder]);
 
   const handleRowPress = (row) => {
     setSelectedRow(row);
@@ -78,39 +86,59 @@ export default function Cities() {
       setRows((prevRows) => prevRows.map((row) => (row.id === editData.id ? editData : row)));
       setModalVisible(false);
       setIsEditing(false);
+      Toast.show({
+        type: 'success',
+        text1: 'City updated successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error saving data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error saving data: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
 
   const handleDelete = async (rowId) => {
-    const token = await AsyncStorage.getItem('token');
-    const response = await axios.delete(`${api}/api/cities/${rowId}`, {
-      headers: {
-        "Content-Type": 'application/json',
-        Authorization: `Bearer ${token}`
-      }
-    }).then(response => {
-      Alert.alert(
-        "Delete",
-        "Are you sure you want to delete this city?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Delete",
-            onPress: () => {
+    Alert.alert(
+      "Delete",
+      "Are you sure you want to delete this city?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          onPress: async () => {
+            const token = await AsyncStorage.getItem('token');
+            const response = await axios.delete(`${api}/api/cities/${rowId}`, {
+              headers: {
+                "Content-Type": 'application/json',
+                Authorization: `Bearer ${token}`
+              }
+            }).then(response => {
               setRows((prevRows) => prevRows.filter((row) => row.id !== rowId));
-            }
+              Toast.show({
+                type: 'success',
+                text1: 'City deleted successfully',
+                position: 'bottom'
+              });
+            }).catch(error => {
+              console.error('Error deleting data: ', error);
+              Toast.show({
+                type: 'error',
+                text1: `Error deleting city: ${error.message}`,
+                position: 'bottom'
+              });
+            });
           }
-        ],
-        { cancelable: false }
-      );
-    }).catch(error => {
-      console.error('Error deleting data: ', error);
-    });
+        }
+      ],
+      { cancelable: false }
+    );
   };
 
   const handleAddNew = () => {
@@ -136,9 +164,19 @@ export default function Cities() {
     }).then(response => {
       setRows([...rows, response.data]);
       setModalVisible(false);
+      Toast.show({
+        type: 'success',
+        text1: 'City added successfully',
+        position: 'bottom'
+      });
       console.log('response.data: ', response.data);
     }).catch(error => {
       console.error('Error adding data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error adding city: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
 
@@ -170,7 +208,6 @@ export default function Cities() {
       )}
     </View>
   );
-  
 
   return (
     <View style={styles.container}>
@@ -182,6 +219,13 @@ export default function Cities() {
             <Ionicons name="add" size={20} color={'white'} />
           </TouchableOpacity>
         )}
+        <SortPicker
+          sortFields={sortFields}
+          setSortField={setSortField}
+          setSortOrder={setSortOrder}
+          sortField={sortField}
+          sortOrder={sortOrder}
+        />
         <FlatList
           data={rows}
           renderItem={renderItem}
@@ -214,6 +258,9 @@ export default function Cities() {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Config */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }

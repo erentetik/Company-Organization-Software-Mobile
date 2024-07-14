@@ -5,6 +5,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../../../constants/api';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the menu icon
+import SortPicker from '../../../components/sortPicker';
+import Toast from 'react-native-toast-message'; // Import Toast
 
 const ROWS_PER_PAGE = 5;
 
@@ -22,6 +24,13 @@ export default function Regions() {
 
   const [userRole, setUserRole] = useState('');
 
+  const [sortField, setSortField] = useState('id');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const sortFields = [
+    { label: 'ID', value: 'id' },
+    { label: 'Name', value: 'name' },
+  ];
+
   useEffect(() => {
     const fetchRole = async () => {
       const role = await AsyncStorage.getItem('role');
@@ -31,10 +40,9 @@ export default function Regions() {
     fetchRole();
   }, []);
 
-
   useEffect(() => {
     fetchRegions();
-  }, [currentPage]);
+  }, [currentPage, sortField, sortOrder]);
 
   const fetchRegions = async () => {
     const token = await AsyncStorage.getItem('token');
@@ -43,7 +51,7 @@ export default function Regions() {
       params: {
         page: currentPage,
         size: ROWS_PER_PAGE,
-        sort: 'id,asc'
+        sort: `${sortField},${sortOrder}`
       },
       headers: {
         "Content-Type": 'application/json',
@@ -81,8 +89,18 @@ export default function Regions() {
       setRegions((prevRegions) => prevRegions.map((region) => (region.id === editData.id ? editData : region)));
       setModalVisible(false);
       setIsEditing(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Region updated successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error saving data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error saving data: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
 
@@ -107,8 +125,18 @@ export default function Regions() {
               }
             }).then(response => {
               setRegions((prevRegions) => prevRegions.filter((region) => region.id !== regionId));
+              Toast.show({
+                type: 'success',
+                text1: 'Region deleted successfully',
+                position: 'bottom'
+              });
             }).catch(error => {
               console.error('Error deleting data: ', error);
+              Toast.show({
+                type: 'error',
+                text1: `Error deleting region: ${error.message}`,
+                position: 'bottom'
+              });
             });
           }
         }
@@ -140,13 +168,21 @@ export default function Regions() {
     }).then(response => {
       setRegions([...regions, response.data]);
       setModalVisible(false);
+      Toast.show({
+        type: 'success',
+        text1: 'Region added successfully',
+        position: 'bottom'
+      });
     }).catch(error => {
       console.error('Error adding data: ', error);
+      Toast.show({
+        type: 'error',
+        text1: `Error adding region: ${error.message}`,
+        position: 'bottom'
+      });
     });
   };
-  
 
-  
   const handleNextPage = () => {
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1);
@@ -158,7 +194,6 @@ export default function Regions() {
       setCurrentPage(currentPage - 1);
     }
   };
-  
 
   const renderItem = ({ item }) => (
     <View style={styles.box}>
@@ -176,7 +211,6 @@ export default function Regions() {
       )}
     </View>
   );
-  
 
   return (
     <View style={styles.container}>
@@ -188,6 +222,13 @@ export default function Regions() {
             <Ionicons name="add" size={20} color={'white'} />
           </TouchableOpacity>
         )}
+        <SortPicker
+          sortField={sortField}
+          setSortField={setSortField}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
+          sortFields={sortFields}
+        />
         <FlatList
           data={regions}
           renderItem={renderItem}
@@ -224,6 +265,9 @@ export default function Regions() {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Config */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }

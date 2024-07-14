@@ -1,30 +1,49 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { api } from '../../constants/api';
+import Toast from 'react-native-toast-message'; // Import Toast
 
 export default function ActivateUser({ navigation }) {
   const [email, setEmail] = useState('');
 
   const handleSubmit = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter an email');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter an email',
+        position: 'bottom'
+      });
       return;
     }
 
     const requestUrl = `${api}/api/auth/activate`;
-    console.log(requestUrl)
-    console.log(email)
+    console.log(requestUrl);
+    console.log(email);
 
     await axios.post(requestUrl, {
       email: email,
     }).then(response => {
       console.log("Fetch operation was successful");
-      console.log(response)
-  
+      console.log(response);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Activation email sent successfully',
+        position: 'bottom'
+      });
+
       navigation.navigate('SignIn');
     }).catch(error => {
       console.error('There was a problem with the fetch operation:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to send activation email',
+        position: 'bottom'
+      });
     });
   };
 
@@ -47,6 +66,8 @@ export default function ActivateUser({ navigation }) {
       <TouchableOpacity style={styles.linkText} onPress={() => navigation.navigate('SignIn')}>
         <Text style={styles.buttonText}>I already have an account.</Text>
       </TouchableOpacity>
+      {/* Toast Config */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }

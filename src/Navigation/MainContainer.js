@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import SignIn from './screens/SignIn';
 import ResetPassword from './screens/ResetPassword';
-import SetNewPassword from './screens/SetNewPassword';
 import ActivateUser from './screens/ActivateUser';
 import Home from './screens/HomePages/Home';
 import Users from './screens/HomePages/Users';
@@ -29,7 +28,6 @@ export default function App() {
         <Stack.Screen name="Home" component={Home} />
         <Stack.Screen name="SignIn" component={SignIn} />
         <Stack.Screen name="ResetPassword" component={ResetPassword} />
-        <Stack.Screen name="SetNewPassword" component={SetNewPassword} />
         <Stack.Screen name="ActivateUser" component={ActivateUser} /> 
         
         <Stack.Screen name="Users" component={Users} />

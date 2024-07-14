@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, TextInput, Button, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {api} from '../../constants/api';
+import { api } from '../../constants/api';
+import Toast from 'react-native-toast-message'; // Import Toast
 
 export default function SignIn({ navigation }) {
   const [email, setEmail] = useState('');
@@ -15,27 +16,34 @@ export default function SignIn({ navigation }) {
     console.log("password ", password);
     const requestUrl = `${url}/api/auth/login`;
     console.log("requestUrl: ", requestUrl);
-  
+
     await axios.post(requestUrl, {
       email: email,
       password: password
     }).then(async response => {
       console.log("Fetch operation was successful");
-  
+
       // Storing data in AsyncStorage
-      await AsyncStorage.setItem('token', response.data.token|| '');
-      await AsyncStorage.setItem('name', response.data.user.name)|| '';
-      await AsyncStorage.setItem('surname', response.data.user.surname|| '');
-      await AsyncStorage.setItem('email', response.data.user.email|| '');
+      await AsyncStorage.setItem('token', response.data.token || '');
+      await AsyncStorage.setItem('name', response.data.user.name || '');
+      await AsyncStorage.setItem('surname', response.data.user.surname || '');
+      await AsyncStorage.setItem('email', response.data.user.email || '');
       await AsyncStorage.setItem('role', response.data.user.roles[0].name || '');
-      await AsyncStorage.setItem('department', response.data.user.department.departmentType.name|| '');
-      await AsyncStorage.setItem('company', response.data.user.department.company.name|| '');
-  
+      await AsyncStorage.setItem('department', response.data.user.department.departmentType.name || '');
+      await AsyncStorage.setItem('company', response.data.user.department.company.name || '');
+
       navigation.navigate('Home');
     }).catch(error => {
       console.error('There was a problem with the fetch operation:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Sign In Failed',
+        text2: 'Invalid email or password.',
+        position: 'bottom'
+      });
     });
   };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Log In</Text>
@@ -76,6 +84,8 @@ export default function SignIn({ navigation }) {
       <TouchableOpacity style={styles.loginButton} onPress={handleSubmit}>
         <Text style={styles.loginButtonText}>Log In</Text>
       </TouchableOpacity>
+      {/* Toast Config */}
+      <Toast ref={(ref) => Toast.setRef(ref)} />
     </View>
   );
 }
